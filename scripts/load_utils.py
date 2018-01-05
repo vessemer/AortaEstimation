@@ -7,6 +7,13 @@ import scipy.ndimage
 import stl
 
 
+def npz_load(path):
+    npz_data = np.load(path)
+    data = {key: value for (key, value) in npz_data.iteritems()}
+    npz_data.close()
+    return data
+
+
 def load_mesh(path, meta):
     """
     Created on Mon Dec  4 14:04:02 2017
@@ -37,6 +44,9 @@ def load_mesh(path, meta):
     #extract only unique coordinates from segmentation, as there are a lot of repeats from small triangles
     sub_seg = np.unique(np.round(seg), axis=0).astype(int)
     #for each point in the segmentation, set the mask to 1. You may find a better way to do this
+    sub_seg[:, 0] = np.clip(sub_seg[:, 0], 0, mask.shape[0] - 1)
+    sub_seg[:, 1] = np.clip(sub_seg[:, 1], 0, mask.shape[1] - 1)
+    sub_seg[:, 2] = np.clip(sub_seg[:, 2], 0, mask.shape[2] - 1)
     for g in sub_seg:
         mask[g[0], g[1], g[2]] = True
     #segmentation is only the border. To fill in segmentation, use binary_fill_holes    
@@ -48,7 +58,7 @@ def load_mesh(path, meta):
 # Load the scans in given folder path
 def load_scan(root_dir, patient_id):
     paths = glob(os.path.join(root_dir, patient_id, '*.npz'))
-    slices = [np.load(path) for path in paths]
+    slices = [npz_load(path) for path in paths]
     slices = sorted(slices, key=lambda x: x['SliceLoc'])
     return slices
 
