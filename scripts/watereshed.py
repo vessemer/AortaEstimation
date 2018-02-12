@@ -6,7 +6,6 @@ import scipy.ndimage as ndimage
 import matplotlib.pyplot as plt
 
 from skimage import measure, morphology, segmentation
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
 # Some of the starting Code is taken from ArnavJain, since it's more readable then my own
@@ -28,7 +27,7 @@ def generate_markers(image):
     external_b = ndimage.binary_dilation(marker_internal, iterations=55)
     marker_external = external_b ^ external_a
     #Creation of the Watershed Marker matrix
-    marker_watershed = np.zeros((512, 512), dtype=np.int)
+    marker_watershed = np.zeros_like(image, dtype=np.int)
     marker_watershed += marker_internal * 255
     marker_watershed += marker_external * 128
     
@@ -72,6 +71,6 @@ def watereshed(image):
     lungfilter = ndimage.morphology.binary_closing(lungfilter, structure=np.ones((5,5)), iterations=3)
     
     #Apply the lungfilter (note the filtered areas being assigned -2000 HU)
-    segmented = np.where(lungfilter == 1, image, -2000 * np.ones((512, 512)))
+    segmented = np.where(lungfilter == 1, image, -2000 * np.ones_like(image))
 #     segmented, lungfilter, outline, watershed, sobel_gradient, marker_internal, marker_external, 
     return segmented, marker_watershed
