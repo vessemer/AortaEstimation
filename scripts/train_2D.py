@@ -164,7 +164,7 @@ def generator(patients_ids, idir, batch_size=32, train_mode=False, shuffle_coef=
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train UNet over CT scans for ROI segmentation.')
     parser.add_argument('idir', type=str, help='input directory')
-    parser.add_argument('mdir', type=str, help='output directory')
+    parser.add_argument('mdir', type=str, help='output model directory')
     parser.add_argument('--batch-size', metavar='N', type=int,
                         help='batch size to load in RAM')
     parser.add_argument('--epochs', metavar='E', type=int,
