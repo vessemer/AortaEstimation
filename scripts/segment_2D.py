@@ -66,7 +66,7 @@ def postprocess_test(pred, patient):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train UNet over CT scans for ROI segmentation.')
+    parser = argparse.ArgumentParser(description='UNet inference over CT scans, ROI segmentation.')
     parser.add_argument('idir', type=str, help='input directory')
     parser.add_argument('odir', type=str, help='output directory')
     parser.add_argument('mpath', type=str, help='path to the model')
@@ -80,11 +80,12 @@ if __name__ == "__main__":
                         help='whether to have test time augmentations, T in {0, 1, 2, 3}')
     parser.add_argument('--j', metavar='J', type=int, 
                         help='number of process to run simultaneously')
-
+    parser.add_argument('--pdir', type=str, help='output directory for CT postprocessed data')
     args = parser.parse_args()
 
     try:
         os.mkdir(os.path.join(args.odir))
+        os.mkdir(os.path.join(args.pdir))
     except:
         pass
     
@@ -143,5 +144,8 @@ if __name__ == "__main__":
         
         if args.spacing:
             lpred = scipy.ndimage.zoom(lpred, fact / args.spacing, order=0)
-        
+            if args.pdir:
+                patient = scipy.ndimage.zoom(patient, fact / args.spacing, order=3)
+        if args.pdir:
+            np.save(os.path.join(args.pdir, os.path.basename(path)), patient)
         np.save(os.path.join(args.odir, os.path.basename(path)), lpred)

@@ -1,0 +1,154 @@
+import argparse
+
+from glob import glob 
+import os
+from tqdm import tqdm 
+from itertools import product
+
+import numpy as np
+import scipy.ndimage
+import cv2
+from multiprocessing import Pool
+
+import load_utils
+
+import sys
+import pandas as pd
+
+import warnings
+warnings.filterwarnings('ignore')
+
+from skimage import measure
+from skimage.morphology import convex_hull_image
+
+import pickle
+from skimage.measure import regionprops
+
+
+def multi_linespace(start, stop, length=50):
+    shape = start.shape
+    start = start.flatten()
+    stop = stop.flatten()
+    lspace = np.array([np.linspace(v, e, length) for v, e in np.stack([start, stop]).T])
+    return lspace.reshape(shape + (-1, ))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='UNet inference over CT scans, ROI segmentation.')
+    parser.add_argument('maskdir', type=str, help='masks input directory')
+    parser.add_argument('patdir', type=str, help='input directory should contains patients\' CT scans')
+    parser.add_argument('odir', type=str, help='output directory')
+    parser.add_argument('--side', type=str, help='output directory')
+    
+    parser.add_argument('--j', metavar='J', type=int, 
+                        help='number of process to run simultaneously')
+
+    args = parser.parse_args()
+
+    try:
+        os.mkdir(os.path.join(args.odir, 'prods'))
+        os.mkdir(os.path.join(args.odir, 'slices'))
+        os.mkdir(os.path.join(args.odir, 'planes'))
+        os.mkdir(os.path.join(args.odir, 'masks'))
+    except:
+        pass
+    
+    SIDE = 224
+    if args.side:
+        SIDE = args.side
+
+    mask_paths = glob(os.path.join(args.maskdir, '*.npy'))
+    mask_paths = [os.path.basename(path) for path in mask_paths]
+    paths = glob(os.path.join(args.patdir, '*.npy'))
+    paths = [path for path in paths if os.path.basename(path) in mask_paths]
+    
+    j = 1
+    if args.j:
+        j = args.j
+
+    for i, path in enumerate(paths):
+        print("Iteration %d/%d, patient id: %s" % (i + 1, len(paths), os.path.basename(path)))
+        lpred = np.load(os.path.join(args.maskdir, os.path.basename(path)))
+        patient = np.load(os.path.join(args.patdir, os.path.basename(path)))
+        
+        x, y = np.asarray(np.where(lpred))[[0, 2]]
+        z = np.polyfit(x, y, 2)
+        p = np.poly1d(z)
+
+        init_d = p.deriv()
+        opt = p(init_d.roots)
+        flipped = False
+        if np.abs(p(x.min()) - opt) > np.abs(p(x.max()) - opt):
+            flipped = True
+            patient = np.flip(patient, 0)
+            lpred = np.flip(lpred, 0)
+            x, y = np.asarray(np.where(lpred))[[0, 2]]
+            z = np.polyfit(x, y, 2)
+            p = np.poly1d(z)
+
+        summedx = (lpred).sum(1).astype(np.float)
+
+        xp = np.linspace(x.min(), x.max(), 100)
+
+        cx, cy = np.asarray(np.where(lpred))[[0, 1]]
+        cz = np.polyfit(cx, cy, 1)
+        cp = np.poly1d(cz)
+
+        cxp = np.linspace(cx.min(), cx.max(), 100)
+
+        init_p = np.poly1d(p.coefficients)
+        length = min(min(patient.shape[1:]), SIDE)
+        step_size = .5
+
+        deriv_p = init_p.deriv()
+        point = np.array([x.min() + 20, init_p(x.min() + 20)])
+        points = [point]
+
+        while points[-1][0] <= x.max():
+            v = np.array([1, deriv_p(point[0] + 1)])
+            v = step_size * v / np.linalg.norm(v, ord=2)
+            point = points[-1] + v
+            point = np.array([point[0], p(point[0])])
+            points.append(point)
+
+        points = np.array(points)
+
+        zis = list()
+        mis = list()
+        prods = list()
+        planes = list()
+
+        for point in tqdm(points[:, 0]):
+            v = np.array([1, cp(point + 1) - cp(point), init_p(point + 1) - init_p(point)])
+            v = np.stack([np.cross(v, np.array([0, 1, 0])), v])
+            v = np.stack([np.cross(v[0], v[1]), v[0]])
+            v = length * v / np.expand_dims(np.linalg.norm(v, ord=2, axis=1), -1)
+
+            origin = np.array([point, cp(point), init_p(point)])
+            planes.append(np.concatenate([origin, np.cross(v[0], v[1])]))
+
+            lz = multi_linespace((-v[0] / 2 + origin), (v[0] / 2 + origin), length)
+            lz = multi_linespace((lz.T - v[1] / 2), (lz.T + v[1] / 2), length)
+            lz = np.rollaxis(lz, 1, 0).reshape(3, -1)
+
+            zi = scipy.ndimage.map_coordinates(patient, lz)
+            zi = zi.reshape((length, length))
+            zi = cv2.resize(zi, dsize=(SIDE, SIDE))
+            zi = (np.expand_dims(zi, -1) + 199.) / 461.
+            zis.append(zi)
+
+            mi = scipy.ndimage.map_coordinates(lpred.astype(np.float), lz)
+            mi = mi.reshape((length, length))
+            mis.append(np.expand_dims(mi, -1))
+
+            prods.append(lz)
+
+        zis = np.array(zis)
+        mis = np.array(mis)
+        planes = np.array(planes)
+        prods = np.array(prods)
+
+        np.save(os.path.join(args.odir, 'prods', os.path.basename(path)), prods)
+        np.save(os.path.join(args.odir, 'slices', os.path.basename(path)), zis)
+        np.save(os.path.join(args.odir, 'masks', os.path.basename(path)), mis)
+        np.save(os.path.join(args.odir, 'planes', os.path.basename(path)), planes)

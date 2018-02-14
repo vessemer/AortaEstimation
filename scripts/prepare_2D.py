@@ -34,7 +34,7 @@ def slice_along(arr, ids, axis):
     return np.swapaxes(arr, axis, 0)
 
 
-def process(patient_id, idir, odir):    
+def process(patient_id, idir, odir):
     patient, meta = load_utils.load_patient(idir, patient_id, metadata=True)
 
     meshs = glob(os.path.join(idir, patient_id, '*_A.stl'))
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         os.mkdir(os.path.join(args.odir))
     except:
         pass
-    
+
     BATCH_SIZE = 1
     if args.batch_size:
         BATCH_SIZE = args.batch_size
