@@ -124,8 +124,6 @@ if __name__ == "__main__":
             # crop out slices from a CT image
             zi = scipy.ndimage.map_coordinates(patient, lz)
             zi = zi.reshape((length, length))
-            zi = cv2.resize(zi, dsize=(SIDE, SIDE))
-            zi = (np.expand_dims(zi, -1) + 199.) / 461.
             zis.append(zi)
 
             # crop out slices from mask of a CT image 
