@@ -7,6 +7,7 @@ import scipy.ndimage
 from glob import glob
 import os
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Prepare dataset for valve segmentation.')
     parser.add_argument('idir', type=str, help='input directory (should contains zis.npy and prods.npy)')

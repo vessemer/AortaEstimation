@@ -12,6 +12,9 @@ sys.path.append('nets')
 import elu_unet
 
 
+SIDE = 128
+
+
 def preprocess_val(patch):
     return np.dstack(
         [scipy.ndimage.zoom(patch[..., 0],  (SIDE / patch.shape[0], SIDE / patch.shape[1])),
@@ -110,7 +113,6 @@ def generator(rootdir, ids, test_mode, val_mode, preprocess, batch_size=8):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train valve segmentation model.')
-    parser.add_argument('idir', type=str, help='input directory (should contains folders with zis.npy and prods.npy)')
     parser.add_argument('mdir', type=str, help='directory with prepared data (should contains mask_*.npy)')
     parser.add_argument('mpath', type=str, help='path to the model')
     
@@ -120,13 +122,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        os.mkdir(os.path.join(args.odir))
+        os.mkdir(os.path.dirname(args.mpath))
     except:
         pass
 
-    paths = glob(os.path.join(args.idir, '*', 'zis.npy'))
+    paths = glob(os.path.join(args.mdir, '*', 'mask_0.npy'))
     ids = [os.path.basename(os.path.dirname(path)) for path in paths]
-    ids = [pid for pid in ids if os.path.isfile(os.path.join(args.mdir, pid, 'mask_0.npy'))]
 
     EPOCHS = 100
     if args.epochs:

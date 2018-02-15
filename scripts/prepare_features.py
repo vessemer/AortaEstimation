@@ -26,7 +26,7 @@ from skimage.measure import regionprops
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Prepare dataset for valve segmentation.')
+    parser = argparse.ArgumentParser(description='Prepare features for valve size classification.')
     parser.add_argument('idir', type=str, help='input directory')
     parser.add_argument('zpdir', type=str, help='directory should contains zis.npy and prods.npy')
     parser.add_argument('valve_path', type=str, help='path to the valve.csv')
@@ -149,3 +149,4 @@ if __name__ == "__main__":
             features.to_csv(args.opath, index=False)
         except:
             print(path)
+    print(features.head())
