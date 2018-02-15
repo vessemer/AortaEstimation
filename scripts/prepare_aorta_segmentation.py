@@ -73,6 +73,8 @@ if __name__ == "__main__":
                         help='batch size to load in RAM')
     parser.add_argument('--j', metavar='J', type=int, 
                         help='number of process to run simultaneously')
+    parser.add_argument('--n', metavar='N', type=int, 
+                        help='maximum number of samples to be processed')
 
     args = parser.parse_args()
 
@@ -87,6 +89,9 @@ if __name__ == "__main__":
 
     patient_ids = glob(os.path.join(args.idir, '*'))
     patient_ids = [os.path.basename(path) for path in patient_ids]
+    
+    if args.n:
+        patient_ids = patient_ids[:args.n]
 
 
     if args.j:

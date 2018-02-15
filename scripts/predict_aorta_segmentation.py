@@ -72,6 +72,9 @@ if __name__ == "__main__":
     parser.add_argument('--j', metavar='J', type=int, 
                         help='number of process to run simultaneously')
     parser.add_argument('--pdir', type=str, help='output directory for CT postprocessed data')
+    parser.add_argument('--n', metavar='N', type=int, 
+                        help='maximum number of samples to be processed')
+
     args = parser.parse_args()
 
     try:
@@ -88,7 +91,10 @@ if __name__ == "__main__":
 
     # reads available paths from idir
     paths = glob(os.path.join(args.idir, '*'))
-    
+
+    if args.n:
+        paths = paths[:args.n]
+
     BATCH_SIZE = 32
     if args.batch_size:
         BATCH_SIZE = args.batch_size
