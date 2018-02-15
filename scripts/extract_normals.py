@@ -24,7 +24,7 @@ def multi_linespace(start, stop, length=50):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='UNet inference over CT scans, ROI segmentation.')
+    parser = argparse.ArgumentParser(description='Extract normal planes of CT scans and predicted masks.')
     parser.add_argument('maskdir', type=str, help='masks input directory')
     parser.add_argument('patdir', type=str, help='input directory should contains patients\' CT scans')
     parser.add_argument('odir', type=str, help='output directory')

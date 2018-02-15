@@ -8,7 +8,7 @@ from glob import glob
 import os
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='UNet inference over CT scans, ROI segmentation.')
+    parser = argparse.ArgumentParser(description='Prepare dataset for valve segmentation.')
     parser.add_argument('idir', type=str, help='input directory (should contains zis.npy and prods.npy)')
     parser.add_argument('mdir', type=str, help='directory with valve masks')
     parser.add_argument('odir', type=str, help='output directory')
