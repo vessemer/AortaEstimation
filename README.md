@@ -243,3 +243,46 @@ optional arguments:
 $ python scripts/prepare_features.py ~/edata/ ~/cdata/DM_Data/RIII valve.csv ~/edata/features.csv --labels_path=../DM_Data/REPRISE\ III\ Sizes.xlsx --exclude_paths=exclude_paths --n=3
 100%|██████████████████████████████████████████████████████████████████████| 3/3 [01:03<00:00, 21.28s/it]
 ```
+
+
+### Make a decision
+
+```python
+from sklearn.model_selection import LeaveOneOut
+from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier
+import pandas as pd
+from tqdm import tqdm
+import pickle
+
+
+features = pd.read_csv('features')
+features = features.drop(['Unnamed: 0'], axis=1)
+
+labels = features[['class']]
+for label in labels['class'].unique():
+    labels[label] = features['class'] == label
+labels = labels.drop(['class'], axis=1).values
+features = features.drop(['class', 'seriesuid'], axis=1).values
+
+loo = LeaveOneOut()
+predicted = dict()
+gt = list()
+clfs = [
+        GradientBoostingClassifier(n_estimators=3, max_depth=2, random_state=10)
+    ]
+for clf in clfs:
+    predicted[str(clf.__class__)] = list()
+    for split, lo in tqdm(loo.split(features)):
+        clf.fit(features[split], np.argmax(labels[split], axis=1))
+
+        predicted[str(clf.__class__)].append(clf.predict_proba(features[lo]))
+        
+for i, clf in enumerate(clfs):
+    pred = np.array(predicted[str(clf.__class__)])
+    pred = np.argmax(pred, axis=-1)
+    gt = np.argmax(labels, axis=-1)
+    print((len(labels) - (np.abs(np.squeeze(pred) - gt) > 0).sum()) / len(labels))
+
+
+pickle.dump(clfs, open('../clfs', 'wb'))
+```
