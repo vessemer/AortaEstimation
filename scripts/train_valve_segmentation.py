@@ -67,7 +67,7 @@ def load(rootdir, pid, test_mode=False, val_mode=False):
     if (not test_mode) and (not val_mode):
         i = np.random.randint(10)
 
-    patch = np.load(os.path.join(rootdir, pid, 'pathc_' + str(i) + '.npy'))
+    patch = np.load(os.path.join(rootdir, pid, 'patch_' + str(i) + '.npy'))
     if test_mode:
         return patch
 
@@ -81,7 +81,7 @@ def load(rootdir, pid, test_mode=False, val_mode=False):
 def load_test(rootdir, pid):
     batch = list()
     for i in range(10):
-        patch = np.load(os.path.join(rootdir, pid, 'pathc_' + str(i) + '.npy'))
+        patch = np.load(os.path.join(rootdir, pid, 'patch_' + str(i) + '.npy'))
         batch.append(preprocess_test(patch))
     return np.stack(batch)
 

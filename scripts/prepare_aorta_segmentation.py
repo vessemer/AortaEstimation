@@ -75,6 +75,8 @@ if __name__ == "__main__":
                         help='number of process to run simultaneously')
     parser.add_argument('--n', metavar='N', type=int, 
                         help='maximum number of samples to be processed')
+    parser.add_argument('--s', metavar='S', type=int, 
+                        help='Skip first S samples')
 
     args = parser.parse_args()
 
@@ -90,6 +92,9 @@ if __name__ == "__main__":
     patient_ids = glob(os.path.join(args.idir, '*'))
     patient_ids = [os.path.basename(path) for path in patient_ids]
     
+
+    if ars.s:
+        patient_ids = patient_ids[args.s:]
     if args.n:
         patient_ids = patient_ids[:args.n]
 

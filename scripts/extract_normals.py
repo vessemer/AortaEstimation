@@ -26,16 +26,22 @@ def multi_linespace(start, stop, length=50):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract normal planes of CT scans and predicted masks.')
     parser.add_argument('maskdir', type=str, help='masks input directory')
-    parser.add_argument('patdir', type=str, help='input directory should contains patients\' CT scans')
+    parser.add_argument('patdir', type=str, help='input directory should contains processed patients\' CT scans')
     parser.add_argument('odir', type=str, help='output directory')
     parser.add_argument('--side', type=str, help='output directory')
     
     parser.add_argument('--j', metavar='J', type=int, 
                         help='number of process to run simultaneously')
+    parser.add_argument('--s', metavar='S', type=int, 
+                        help='Skip first S samples')
+    parser.add_argument('--n', metavar='N', type=int, 
+                        help='maximum number of samples to be processed')
+
 
     args = parser.parse_args()
 
     try:
+        os.mkdir(args.odir)
         os.mkdir(os.path.join(args.odir, 'prods'))
         os.mkdir(os.path.join(args.odir, 'slices'))
         os.mkdir(os.path.join(args.odir, 'planes'))
@@ -55,6 +61,11 @@ if __name__ == "__main__":
     j = 1
     if args.j:
         j = args.j
+
+    if args.s:
+        paths = paths[args.s:]
+    if args.n:
+        paths = paths[:args.n]
 
     for i, path in enumerate(paths):
         print("Iteration %d/%d, patient id: %s" % (i + 1, len(paths), os.path.basename(path)))
@@ -140,7 +151,11 @@ if __name__ == "__main__":
         prods = np.array(prods)
 
         # save resulted arrays into sub directories of --odir
+        # prods is coordinates of format: [N, 3, length * length], where N is amount of cropped slices
         np.save(os.path.join(args.odir, 'prods', os.path.basename(path)), prods)
+        # zis is stacked slices of patient
         np.save(os.path.join(args.odir, 'slices', os.path.basename(path)), zis)
+        # mis is stacked masks
         np.save(os.path.join(args.odir, 'masks', os.path.basename(path)), mis)
+        # planes are in format: [origin_x, origin_y, origin_z, vector_x, vector_y, vector_z]
         np.save(os.path.join(args.odir, 'planes', os.path.basename(path)), planes)

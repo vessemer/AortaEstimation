@@ -22,7 +22,7 @@ def preprocess_test(patch):
 def load_test(rootdir, pid):
     batch = list()
     for i in range(10):
-        patch = np.load(os.path.join(rootdir, pid, 'pathc_' + str(i) + '.npy'))
+        patch = np.load(os.path.join(rootdir, pid, 'patch_' + str(i) + '.npy'))
         shape = patch.shape
         batch.append(preprocess_test(patch))
     return np.stack(batch), shape
@@ -42,6 +42,8 @@ if __name__ == "__main__":
     
     parser.add_argument('--n', metavar='N', type=int, 
                         help='maximum number of epochs to be trained')
+    parser.add_argument('--s', metavar='S', type=int, 
+                    help='Skip first S samples')
 
     args = parser.parse_args()
 
@@ -52,7 +54,9 @@ if __name__ == "__main__":
 
     paths = glob(os.path.join(args.idir, '*', 'mask_0.npy'))
     ids = [os.path.basename(os.path.dirname(path)) for path in paths]
-
+    
+    if args.s:
+        ids = ids[args.s:]
     if args.n:
         ids = ids[:args.n]
 

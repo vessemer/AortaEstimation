@@ -74,6 +74,8 @@ if __name__ == "__main__":
     parser.add_argument('--pdir', type=str, help='output directory for CT postprocessed data')
     parser.add_argument('--n', metavar='N', type=int, 
                         help='maximum number of samples to be processed')
+    parser.add_argument('--s', metavar='S', type=int, 
+                        help='Skip first S samples')
 
     args = parser.parse_args()
 
@@ -92,6 +94,8 @@ if __name__ == "__main__":
     # reads available paths from idir
     paths = glob(os.path.join(args.idir, '*'))
 
+    if args.s:
+        ids = ids[args.s:]
     if args.n:
         paths = paths[:args.n]
 

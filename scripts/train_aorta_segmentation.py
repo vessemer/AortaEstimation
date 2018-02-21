@@ -177,7 +177,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        os.mkdir(os.path.join(args.model_dir))
+        os.mkdir(os.path.join(args.mdir))
     except:
         pass
 

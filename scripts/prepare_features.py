@@ -36,6 +36,8 @@ if __name__ == "__main__":
     parser.add_argument('--exclude_paths', metavar='EP', type=str, help='path to the pickled version of excluded paths')
     parser.add_argument('--n', metavar='N', type=int, 
                         help='maximum number of samples to be processed')
+    parser.add_argument('--s', metavar='S', type=int, 
+                        help='Skip first S samples')
 
     args = parser.parse_args()
 
@@ -66,6 +68,9 @@ if __name__ == "__main__":
     zis_paths = {os.path.basename(path): os.path.join(path, 'zis.npy') for path in paths}
     prods_paths = {os.path.basename(path): os.path.join(path, 'prods.npy') for path in paths}
 
+
+    if ars.s:
+        paths = paths[args.s:]
     if args.n:
         paths = paths[:args.n]
 
