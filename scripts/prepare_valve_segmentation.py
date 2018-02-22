@@ -18,6 +18,8 @@ if __name__ == "__main__":
     parser.add_argument('valvecsv', type=str, help='csv file: [seriesuid, idx0, idx1] w.r.t. processed CTs')
     parser.add_argument('odir', type=str, help='output directory')
     
+    parser.add_argument('--test', metavar='T', type=bool, 
+                        help='Process in test mode')
     parser.add_argument('--s', metavar='S', type=int, 
                         help='Skip first S samples')
     parser.add_argument('--n', metavar='N', type=int, 
@@ -33,8 +35,9 @@ if __name__ == "__main__":
     paths = glob(os.path.join(args.ndir, 'prods', '*'))
     ids = [os.path.basename(path) for path in paths]
     ids = [pid for pid in ids if os.path.isfile(os.path.join(args.ndir, 'slices', pid))]
-    valve_df = pd.read_csv(args.valvecsv)
-    ids = [pid for pid in ids if pid.split('.npy')[0] in valve_df.seriesuid.values]
+    if not args.test:
+        valve_df = pd.read_csv(args.valvecsv)
+        ids = [pid for pid in ids if pid.split('.npy')[0] in valve_df.seriesuid.values]
 
     if args.s:
         ids = ids[args.s:]
@@ -45,35 +48,40 @@ if __name__ == "__main__":
         patient = np.load(os.path.join(args.patdir, pid))
         mask = np.load(os.path.join(args.mdir, pid)) > .5
         prods = np.load(os.path.join(args.ndir, 'prods', pid))
+        
+        if not args.test:
+            imask = np.zeros_like(mask)
+            values = scipy.ndimage.map_coordinates(mask, np.rollaxis(prods, 1, 0).reshape(3, -1))
+            values = values.reshape((prods.shape[0], prods.shape[-1]))
+            idx0, idx1 = valve_df[valve_df.seriesuid == pid.split('.npy')[0]][['idx0', 'idx1']].values[0]
 
-        imask = np.zeros_like(mask)
-        values = scipy.ndimage.map_coordinates(mask, np.rollaxis(prods, 1, 0).reshape(3, -1))
-        values = values.reshape((prods.shape[0], prods.shape[-1]))
-        idx0, idx1 = valve_df[valve_df.seriesuid == pid.split('.npy')[0]][['idx0', 'idx1']].values[0]
+            for i in range(idx0, idx1):
+                coords = np.array([prods[i][0], prods[i][1], prods[i][2]])
+                coords = np.clip(coords.T, 0, np.array(mask.shape) - 1)
+                coords = np.round(coords[values[i] > .5]).astype(np.int).T
+                coords = tuple(c for c in coords)
 
-        for i in range(idx0, idx1):
-            coords = np.array([prods[i][0], prods[i][1], prods[i][2]])
-            coords = np.clip(coords.T, 0, np.array(mask.shape) - 1)
-            coords = np.round(coords[values[i] > .5]).astype(np.int).T
-            coords = tuple(c for c in coords)
+                imask[coords] = True
 
-            imask[coords] = True
+            imask = mask & scipy.ndimage.binary_closing(imask, iterations=8)
 
-        imask = mask & scipy.ndimage.binary_closing(imask, iterations=8)
-
-        if not imask.sum():
-            continue
+            if not imask.sum():
+                print('Empty mask: ', pid)
+                continue
 
         prods_ = np.rollaxis(prods, 1, 0).reshape(3, -1)
         mapped_mask = scipy.ndimage.map_coordinates(mask.astype(np.float), prods_, order=0) > .5
-        imapped_mask = scipy.ndimage.map_coordinates(imask.astype(np.float), prods_, order=0) > .5
+        if not args.test:
+            imapped_mask = scipy.ndimage.map_coordinates(imask.astype(np.float), prods_, order=0) > .5
         mapped_patient = scipy.ndimage.map_coordinates(patient.astype(np.float), prods_)
 
         mapped_mask = mapped_mask.reshape((prods.shape[0], int(prods.shape[-1] ** .5), int(prods.shape[-1] ** .5)))
-        imapped_mask = imapped_mask.reshape((prods.shape[0], int(prods.shape[-1] ** .5), int(prods.shape[-1] ** .5)))
+        if not args.test:
+            imapped_mask = imapped_mask.reshape((prods.shape[0], int(prods.shape[-1] ** .5), int(prods.shape[-1] ** .5)))
         mapped_patient = mapped_patient.reshape((prods.shape[0], int(prods.shape[-1] ** .5), int(prods.shape[-1] ** .5)))
         mapped_patient = ((mapped_patient + 199.) / 461.) * mapped_mask
-        mapped_mask = imapped_mask
+        if not args.test:
+            mapped_mask = imapped_mask
 
         if not mapped_mask.sum():
             print(idx, pid, ' empty')
@@ -108,4 +116,5 @@ if __name__ == "__main__":
                 mask = mapped_mask[:, :, y_point]
 
             np.save(os.path.join(args.odir, pid.split('.npy')[0], 'patch_' + str(i)), patch)
-            np.save(os.path.join(args.odir, pid.split('.npy')[0], 'mask_' + str(i)), mask)
+            if not args.test:
+                np.save(os.path.join(args.odir, pid.split('.npy')[0], 'mask_' + str(i)), mask)

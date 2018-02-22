@@ -95,7 +95,7 @@ if __name__ == "__main__":
     paths = glob(os.path.join(args.idir, '*'))
 
     if args.s:
-        ids = ids[args.s:]
+        paths = paths[args.s:]
     if args.n:
         paths = paths[:args.n]
 

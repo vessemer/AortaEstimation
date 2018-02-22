@@ -52,7 +52,7 @@ if __name__ == "__main__":
     except:
         pass
 
-    paths = glob(os.path.join(args.idir, '*', 'mask_0.npy'))
+    paths = glob(os.path.join(args.idir, '*', 'patch_0.npy'))
     ids = [os.path.basename(os.path.dirname(path)) for path in paths]
     
     if args.s:
