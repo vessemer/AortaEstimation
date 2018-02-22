@@ -40,6 +40,11 @@ if __name__ == "__main__":
     parser.add_argument('odir', type=str, help='output directory')
     parser.add_argument('mpath', type=str, help='path to the model')
     
+    parser.add_argument('--valvedir', metavar='VSCV', type=str, 
+                        help='Directory to store predicted valve mapped on 3D')
+    parser.add_argument('--ndir', type=str, help='directory should contains prods & slices directories (output from extract_normals)')
+    parser.add_argument('--mdir', type=str, help='directory with valve masks')
+
     parser.add_argument('--n', metavar='N', type=int, 
                         help='maximum number of epochs to be trained')
     parser.add_argument('--s', metavar='S', type=int, 
@@ -49,6 +54,10 @@ if __name__ == "__main__":
 
     try:
         os.mkdir(os.path.join(args.odir))
+    except:
+        pass
+    try:
+        os.mkdir(os.path.join(args.valvedir))
     except:
         pass
 
@@ -80,3 +89,25 @@ if __name__ == "__main__":
         # .. and binary closing
         lpred = scipy.ndimage.binary_closing(lpred, iterations=5)
         np.save(os.path.join(args.odir, pid), lpred)
+        
+        if args.valvedir:
+            idxs = np.where(lpred)[0]
+            idx0, idx1 = idxs.min(), idxs.max()
+
+            mask = np.load(os.path.join(args.mdir, pid + '.npy')) > .5
+            prods = np.load(os.path.join(args.ndir, 'prods', pid + '.npy'))
+            
+            imask = np.zeros_like(mask)
+            values = scipy.ndimage.map_coordinates(mask, np.rollaxis(prods, 1, 0).reshape(3, -1))
+            values = values.reshape((prods.shape[0], prods.shape[-1]))
+
+            for i in range(idx0, idx1):
+                coords = np.array([prods[i][0], prods[i][1], prods[i][2]])
+                coords = np.clip(coords.T, 0, np.array(mask.shape) - 1)
+                coords = np.round(coords[values[i] > .5]).astype(np.int).T
+                coords = tuple(c for c in coords)
+
+                imask[coords] = True
+
+            imask = mask & scipy.ndimage.binary_closing(imask, iterations=8)
+            np.save(os.path.join(args.valvedir, pid), imask)

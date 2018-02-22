@@ -15,9 +15,9 @@ if __name__ == "__main__":
     parser.add_argument('ndir', type=str, help='directory should contains prods & slices directories (output from extract_normals)')
     parser.add_argument('mdir', type=str, help='directory with valve masks')
     parser.add_argument('patdir', type=str, help='directory with CTs, processed w.r.t. valve masks')
-    parser.add_argument('valvecsv', type=str, help='csv file: [seriesuid, idx0, idx1] w.r.t. processed CTs')
     parser.add_argument('odir', type=str, help='output directory')
-    
+        
+    parser.add_argument('--valvecsv', type=str, help='csv file: [seriesuid, idx0, idx1] w.r.t. processed CTs')
     parser.add_argument('--test', metavar='T', type=bool, 
                         help='Process in test mode')
     parser.add_argument('--s', metavar='S', type=int, 

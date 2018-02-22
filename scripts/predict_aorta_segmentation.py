@@ -12,7 +12,6 @@ import cv2
 from multiprocessing import Pool
 
 import load_utils
-import watereshed
 
 import sys
 sys.path.append('nets')
