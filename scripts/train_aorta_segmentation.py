@@ -30,19 +30,20 @@ import pickle
 from skimage.measure import regionprops
 
 
-def load(path, standardize=False):
+def load(path):
+    """
+    Load files and stack them into ndarray from a given path. 
+    """
     patches = glob(os.path.join(path, 'patch*.npy'))
     patch = np.load(patches[np.random.randint(len(patches))])
-    if standardize:
-        return np.dstack([
-            scipy.ndimage.zoom(patch[..., 0], .7),
-            scipy.ndimage.zoom(patch[..., -1], .7, order=0)
-        ])
 
     return patch
 
 
 def preprocess_test(patch):
+    """
+    Preprocess ndarray from a given patch (in a test mode)
+    """
     window = min(patch.shape[1], int(1.7 * SIDE))
     point = np.array(patch.shape) // 2 - window // 2
     point = np.clip(point, 0, np.array(patch.shape) - window)
@@ -56,6 +57,9 @@ def preprocess_test(patch):
 
 
 def preprocess_val(patch):
+    """
+    Preprocess ndarray from a given patch (in a validation mode)
+    """
     window = min(patch.shape[1], int(1.7 * SIDE))
     point = np.array(patch.shape[:-1]) // 2 - window // 2
     point = np.clip(point, 0, np.array(patch.shape[:-1]) - window)
@@ -72,12 +76,18 @@ def preprocess_val(patch):
 
 
 def preprocess_train(patch):
+    """
+    Preprocess ndarray from a given patch (in a train mode, with augmentations applied)
+    """
+    # make a random flip along the 1st axis
     if np.random.randint(2):
         patch = np.flip(patch, 0)
-    
+
+    # make a random flip along the 2nd axis
     if np.random.randint(2):
         patch = np.flip(patch, 1)
-    
+
+    # make a random shiift in 2D
     if np.random.randint(3):
         shift = np.random.uniform(-.2, .2, size=2)
         shift *= np.array(patch.shape[:2])
@@ -85,7 +95,8 @@ def preprocess_train(patch):
             scipy.ndimage.shift(patch[..., 0], shift),
             scipy.ndimage.shift(patch[..., -1], shift, order=0)
         ])
-        
+
+    # make a random rotation in 2D
     if np.random.randint(3):
         rotate = np.random.uniform(-40, 40)
         patch = np.dstack([
@@ -93,6 +104,7 @@ def preprocess_train(patch):
             scipy.ndimage.rotate(patch[..., -1:], rotate, order=0)
         ])
     
+    # crop a random window in 2D
     scale = np.random.uniform(.5, 1.5)
     window = min(min(patch.shape[:-1]), int(SIDE * scale))
     if np.count_nonzero(patch[..., 1]):
@@ -111,6 +123,7 @@ def preprocess_train(patch):
         point[1]: point[1] + window
     ]
 
+    # stack and zoom back cropped windows to the desired receptive fields
     return np.dstack([
         scipy.ndimage.zoom(patch[..., 0], SIDE / patch.shape[0]),
         scipy.ndimage.zoom(patch[..., -1], SIDE / patch.shape[0], order=0)
@@ -118,6 +131,10 @@ def preprocess_train(patch):
 
 
 def eval_generator(patient, batch_size=32):
+    """
+    Generator function for Keras (in eval mode)
+    patient: ndarray
+    """
     for i in range(len(patient) // batch_size + 1):
         batch = patient[i * batch_size: (i + 1) * batch_size]
         processed = list(map(preprocess_val, batch))
@@ -126,6 +143,11 @@ def eval_generator(patient, batch_size=32):
         
 
 def test_generator(patient, batch_size=32, train_mode=False):
+    """
+    Generator function for Keras (in eval mode)
+    patient: ndarray
+    batch_size: imperically chosen parameter
+    """
     for i in range(len(patient) // batch_size + 1):
         batch = patient[i * batch_size: (i + 1) * batch_size]
         processed = list(map(preprocess_test, batch))
@@ -133,7 +155,13 @@ def test_generator(patient, batch_size=32, train_mode=False):
         yield (np.expand_dims(processed, -1) + 199.) / 461.
         
 
-def generator(patients_ids, idir, batch_size=32, train_mode=False, shuffle_coef=.7, j=1):
+def generator(patients_ids, idir, batch_size=32, train_mode=False, j=1):
+    """
+    Generator function for Keras (in eval mode)
+    patient: ndarray
+    batch_size: imperically chosen parameter
+    j: jobs in parallel
+    """
     while True:
         if train_mode:
             np.random.shuffle(patients_ids)
@@ -173,18 +201,20 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # creates a directory if there isn't any
     try:
         os.mkdir(os.path.join(args.mdir))
     except:
         pass
 
-
+    # extracted patients ids inside os a given `idir`
     patient_ids = glob(os.path.join(args.idir, '*', 'patch_0.npy'))
     patient_ids = [os.path.basename(os.path.dirname(pid)) for pid in patient_ids]
 
     np.random.RandomState(seed=42)
     np.random.shuffle(patient_ids)
 
+    # side of a receptive field of CNN
     SIDE = 224
     BATCH_SIZE = 32
     if args.batch_size:
@@ -194,10 +224,12 @@ if __name__ == "__main__":
     if args.split:
         SPLIT = args.split
 
+    # make a split for a train / test (validation here)
     train = patient_ids[int(SPLIT * len(patient_ids)):]
     test = patient_ids[:int(SPLIT * len(patient_ids))]
 
-    model = unet.get_unet(224, 224)
+    # create UNet model
+    model = unet.get_unet(SIDE, SIDE)
 
     j = 1
     if args.j:
@@ -210,13 +242,14 @@ if __name__ == "__main__":
 
     for i in range(NUM):
         train_gen = generator(train, args.idir, train_mode=True, j=j)
-
+        # fit UNet model via generators
         model.fit_generator(
             train_gen,
             steps_per_epoch= 10 * len(train) // BATCH_SIZE + 1, 
             verbose=1, 
         )
 
+        # make a local validation 
         test_gen = generator(test, args.idir, train_mode=False, j=j)
         valeval = model.evaluate_generator(test_gen, 3)
 

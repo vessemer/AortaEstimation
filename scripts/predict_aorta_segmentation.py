@@ -24,6 +24,11 @@ warnings.filterwarnings('ignore')
 
 
 def preprocess_test(patch):
+    """
+    Preprocess patch for the network input (in test mode)
+    patch: ndarray
+    """
+    # crop a central window in 2D
     window = min(patch.shape[1], int(1.7 * SIDE))
     point = np.array(patch.shape) // 2 - window // 2
     point = np.clip(point, 0, np.array(patch.shape) - window)
@@ -32,11 +37,17 @@ def preprocess_test(patch):
         point[1]: point[1] + window
     ]
 
+    # stack and zoom back cropped windows to the desired receptive fields
     clip = cv2.resize(patch, dsize=(SIDE, SIDE))
     return clip
       
 
 def test_generator(patient, batch_size=32, train_mode=False):
+    """
+    Generator function for Keras (in eval mode)
+    patient: ndarray
+    batch_size: imperically chosen parameter
+    """
     for i in range(len(patient) // batch_size + 1):
         batch = patient[i * batch_size: (i + 1) * batch_size]
         processed = list(map(preprocess_test, batch))
@@ -45,6 +56,9 @@ def test_generator(patient, batch_size=32, train_mode=False):
         
 
 def postprocess_test(pred, patient):
+    """
+    Postprocess predicted output (inserts and resizes back a cropped prediction)
+    """
     window = min(patient.shape[1], int(1.7 * SIDE))
     
     pred = scipy.ndimage.zoom(pred > .5, [1, window / SIDE, window / SIDE], order=0)
@@ -78,6 +92,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # creates a directories if there isn't any
     try:
         os.mkdir(os.path.join(args.odir))
         os.mkdir(os.path.join(args.pdir))

@@ -12,10 +12,14 @@ sys.path.append('nets')
 import elu_unet
 
 
+# empirically chosen parameter of a receptive field
 SIDE = 128
 
 
 def preprocess_val(patch):
+    """
+    Preprocess ndarray from a given patch (in a validation mode)
+    """
     return np.dstack(
         [scipy.ndimage.zoom(patch[..., 0],  (SIDE / patch.shape[0], SIDE / patch.shape[1])),
          scipy.ndimage.zoom(patch[..., -1],  (SIDE / patch.shape[0], SIDE / patch.shape[1]), order=0)]
@@ -23,11 +27,20 @@ def preprocess_val(patch):
 
 
 def preprocess(patch):
+    """
+    Preprocess patch 
+    """
     scale = np.random.uniform(.8, 1.1, size=2)
+
+    # make a random flip along the 1st axis
     if np.random.randint(2):
         patch = np.flip(patch, 0)
+
+    # make a random flip along the 2nd axis
     if np.random.randint(2):
         patch = np.flip(patch, 1)
+
+    # make a random shiift in 2D
     if np.random.randint(2):
         patch = np.rot90(patch, k=np.random.randint(3) + 1)
     
@@ -36,6 +49,7 @@ def preprocess(patch):
     if not np.random.randint(3):
         patch = np.concatenate([np.flip(patch, 1), patch, np.flip(patch, 1)], 1)
     
+    # crop a random window in 2D
     window = np.clip(SIDE * scale, 0, min(patch.shape[:-1]))
     if np.count_nonzero(patch[..., -1]):
         coords = np.array(np.where(patch[..., -1]))
@@ -55,7 +69,8 @@ def preprocess(patch):
         point[0]: point[0] + int(window[0]), 
         point[1]: point[1] + int(window[1])
     ]
-    
+
+    # stack and zoom back cropped windows to the desired receptive fields
     return np.dstack(
         [scipy.ndimage.zoom(patch[..., 0], (SIDE / patch.shape[0], SIDE / patch.shape[1])), 
          scipy.ndimage.zoom(patch[..., -1],  (SIDE / patch.shape[0], SIDE / patch.shape[1]), order=0)]
@@ -63,6 +78,9 @@ def preprocess(patch):
 
 
 def load(rootdir, pid, test_mode=False, val_mode=False):
+    """
+    Load files and stack them into ndarray from a given path. 
+    """
     i = 0
     if (not test_mode) and (not val_mode):
         i = np.random.randint(10)
@@ -79,6 +97,9 @@ def load(rootdir, pid, test_mode=False, val_mode=False):
 
 
 def load_test(rootdir, pid):
+    """
+    Load files and stack them into ndarray from a given path (in a test mode). 
+    """
     batch = list()
     for i in range(10):
         patch = np.load(os.path.join(rootdir, pid, 'patch_' + str(i) + '.npy'))
@@ -87,12 +108,18 @@ def load_test(rootdir, pid):
 
 
 def generator_test(rootdir, ids):
+    """
+    Generator function for Keras (in a test mode).
+    """
     while True:
         for pid in ids:
             yield load_test(rootdir, pid)
 
 
 def generator(rootdir, ids, test_mode, val_mode, preprocess, batch_size=8):
+    """
+    Generator function for Keras (in a train mode).
+    """
     while True:
         if (not test_mode) and (not val_mode):
             np.random.shuffle(ids)
@@ -121,11 +148,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # create a directory if there isn't any
     try:
         os.mkdir(os.path.dirname(args.mpath))
     except:
         pass
 
+    # extracted patients ids inside os a given `idir`
+    # leave only those which have annotated valve mask
     paths = glob(os.path.join(args.mdir, '*', 'mask_0.npy'))
     ids = [os.path.basename(os.path.dirname(path)) for path in paths]
 
@@ -133,9 +163,11 @@ if __name__ == "__main__":
     if args.epochs:
         EPOCHS = args.epochs
 
-    SPLIT = .8
+    # create modified Elu UNet model 
     model = elu_unet.get_unet()
 
+    # make train / test split (here validation)
+    SPLIT = .8
     train_ids = ids[:int(SPLIT * len(ids))]
     test_ids = ids[int(SPLIT * len(ids)):]
 
@@ -144,7 +176,7 @@ if __name__ == "__main__":
     test_gen = generator(args.mdir, test_ids, test_mode=False, val_mode=True, preprocess=preprocess_val, batch_size=batch_size)
 
     from keras.callbacks import ModelCheckpoint
-
+    # fit model via generators
     model.fit_generator(
         train_gen, 
         steps_per_epoch=int(np.ceil(len(train_ids) / batch_size)), 

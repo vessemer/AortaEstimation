@@ -6,7 +6,7 @@ import os
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Valve segmentation model inference over prepared dataset')
+    parser = argparse.ArgumentParser(description='Prediction pipeline')
     parser.add_argument('idir', type=str, help='directory with CT scans in .npz format')
     parser.add_argument('tmpdir', type=str, help='intermediate output directory (aorta & valve segmentation will be placed there)')
     parser.add_argument('mvpath', type=str, help='path to the valve model')

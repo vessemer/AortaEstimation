@@ -17,6 +17,10 @@ warnings.filterwarnings('ignore')
 
 
 def rot(image, xy, angle, reshape=True):
+    """
+    Rotate input ndarray along given point (xy) on a given angle
+    reshape: whether to change original shape of an ndarray.
+    """
     im_rot = scipy.ndimage.interpolation.rotate(image, angle, reshape=reshape) 
     org_center = (np.array(image.shape[:2][::-1])-1)/2.
     rot_center = (np.array(im_rot.shape[:2][::-1])-1)/2.
@@ -28,22 +32,34 @@ def rot(image, xy, angle, reshape=True):
 
 
 def slice_along(arr, ids, axis):
+    """
+    slice `arr` by an `ids` along the `axis`.
+    """
     arr = np.swapaxes(arr, axis, 0)
     arr = arr[slice(*ids)]
     return np.swapaxes(arr, axis, 0)
 
 
 def process(patient_id, idir, odir):
+    """
+    Process patients' CT scans from input (idir) to output dir (odir)
+    patient_id: directory inside `idir`, should contains patient's CT slices in .npz format
+        + aorta's mask in .stl format
+    """
+    # load patient
     patient, meta = load_utils.load_patient(idir, patient_id, metadata=True)
 
+    # load mask
     meshs = glob(os.path.join(idir, patient_id, '*_A.stl'))
-    meshs = load_utils.load_mesh(meshs[0], meta) 
+    meshs = load_utils.load_mesh(meshs[0], meta)
 
+    # create bounding box for mask
     bbox = np.array(np.where(meshs))
     bbox = np.array([bbox.min(1), bbox.max(1)])
     bbox_shape = np.diff(bbox, axis=0).astype(np.int).flatten()
     bbox_centroid = bbox.mean(0).astype(np.int)
 
+    # crop only those slices which are inside bbox
     bbox_axes = [0] 
     for bb_axis in bbox_axes:
         bb_ids = (
@@ -51,14 +67,17 @@ def process(patient_id, idir, odir):
             bbox_centroid[bb_axis] + bbox_shape[bb_axis] // 2
         )
         bb_ids = np.clip(bb_ids, 0, patient.shape[bb_axis])
-        meshs = slice_along(meshs, bb_ids, bb_axis)
+        meshs = 
+        (meshs, bb_ids, bb_axis)
         patient = slice_along(patient, bb_ids, bb_axis)
 
+    # create directory if there isn't any
     try:
         os.mkdir(os.path.join(odir, patient_id))
     except:
         pass
 
+    # save results
     for i, (mes, pat) in enumerate(zip(meshs, patient)):
         patch = np.dstack([pat, mes[:pat.shape[0], :pat.shape[1]]])
         np.save(os.path.join(odir, patient_id, 'patch_' + str(i)), patch)
@@ -79,20 +98,23 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # create directory if there isn't any
     try:
         os.mkdir(os.path.join(args.odir))
     except:
         pass
 
+    # if no `BATCH_SIZE` is provided, then BATCH_SIZE == 1
     BATCH_SIZE = 1
     if args.batch_size:
         BATCH_SIZE = args.batch_size
 
+    # Collect all patient ids from input directory
     patient_ids = glob(os.path.join(args.idir, '*'))
     patient_ids = [os.path.basename(path) for path in patient_ids]
     
 
-    if ars.s:
+    if args.s:
         patient_ids = patient_ids[args.s:]
     if args.n:
         patient_ids = patient_ids[:args.n]
@@ -102,10 +124,11 @@ if __name__ == "__main__":
         process = partial(process, idir=args.idir, odir=args.odir)
 
     processeds = list()
+    # apply preprocess function for all ids extracted from `idir`
     for i in tqdm(range(len(patient_ids) // BATCH_SIZE + 1)):
         batch = patient_ids[i * BATCH_SIZE: (i + 1) * BATCH_SIZE]
         if args.j:
-
+            # parallel the process along the batch
             with Pool(args.j) as pool:
                 processed = pool.map(process, batch)
         else:

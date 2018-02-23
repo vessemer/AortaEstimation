@@ -16,6 +16,18 @@ warnings.filterwarnings('ignore')
 
 
 def multi_linespace(start, stop, length=50):
+    """
+    Generalize np.linespace function for a multi dimensional case.
+    start : scalar
+        The starting value of the sequence.
+    stop : scalar
+        The end value of the sequence, unless `endpoint` is set to False.
+        In that case, the sequence consists of all but the last of ``num + 1``
+        evenly spaced samples, so that `stop` is excluded.  Note that the step
+        size changes when `endpoint` is False.
+    length : int, optional
+        Number of samples to generate. Default is 50. Must be non-negative.
+    """
     shape = start.shape
     start = start.flatten()
     stop = stop.flatten()
@@ -40,6 +52,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # creates a directories if there isn't any
     try:
         os.mkdir(args.odir)
         os.mkdir(os.path.join(args.odir, 'prods'))
@@ -49,10 +62,13 @@ if __name__ == "__main__":
     except:
         pass
     
+    
     SIDE = 224
     if args.side:
         SIDE = args.side
 
+    # extracted patients ids inside os a given `idir`
+    # liave only those which have predicted masks in `mdir`
     mask_paths = glob(os.path.join(args.maskdir, '*.npy'))
     mask_paths = [os.path.basename(path) for path in mask_paths]
     paths = glob(os.path.join(args.patdir, '*.npy'))
@@ -158,4 +174,5 @@ if __name__ == "__main__":
         # mis is stacked masks
         np.save(os.path.join(args.odir, 'masks', os.path.basename(path)), mis)
         # planes are in format: [origin_x, origin_y, origin_z, vector_x, vector_y, vector_z]
+        # planes elements are consisted of origin-{x, y, z} (point on a curve) and vector-{x, y, z} (plane's normal vector) 
         np.save(os.path.join(args.odir, 'planes', os.path.basename(path)), planes)
