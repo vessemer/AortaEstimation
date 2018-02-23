@@ -220,7 +220,7 @@ if __name__ == "__main__":
     if args.batch_size:
         BATCH_SIZE = args.batch_size
 
-    SPLIT = .7
+    SPLIT = .3
     if args.split:
         SPLIT = args.split
 

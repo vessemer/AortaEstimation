@@ -38,6 +38,7 @@ if __name__ == "__main__":
     paths = glob(os.path.join(args.ndir, 'prods', '*'))
     ids = [os.path.basename(path) for path in paths]
     ids = [pid for pid in ids if os.path.isfile(os.path.join(args.ndir, 'slices', pid))]
+    ids = [pid for pid in ids if os.path.isfile(os.path.join(args.patdir, pid))]
 
     # if test mode we don't know valve idxs
     if not args.test:

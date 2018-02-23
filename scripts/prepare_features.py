@@ -74,6 +74,7 @@ if __name__ == "__main__":
     ids = [pid for pid in ids if os.path.isfile(os.path.join(args.ndir, 'slices', pid))]
     ids = [pid for pid in ids if os.path.isfile(os.path.join(args.ndir, 'masks', pid))]
     ids = [pid for pid in ids if os.path.isfile(os.path.join(args.vdir, pid))]
+    ids = [pid for pid in ids if os.path.isfile(os.path.join(args.patdir, pid))]
 
     if args.s:
         paths = paths[args.s:]
@@ -162,6 +163,11 @@ if __name__ == "__main__":
                                 gm.means_.min(),
                                 gm.means_.max()]):
             features_df.loc[features_df['seriesuid'] == pid.split('.npy')[0], feature] = el
+            
+        features_df = features_df.dropna()
+        features_df['ratio_idx0'] = features_df.longs_0 / features_df.shorts_0 
+        features_df['ratio_idx1'] = features_df.longs_1 / features_df.shorts_1 
+        features_df['gm_diff'] = features_df.gm_min - features_df.gm_max
 
         # save `features_df` on each iteration
         features_df.to_csv(args.opath, index=False)

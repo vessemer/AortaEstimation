@@ -67,8 +67,7 @@ def process(patient_id, idir, odir):
             bbox_centroid[bb_axis] + bbox_shape[bb_axis] // 2
         )
         bb_ids = np.clip(bb_ids, 0, patient.shape[bb_axis])
-        meshs = 
-        (meshs, bb_ids, bb_axis)
+        meshs = slice_along(meshs, bb_ids, bb_axis)
         patient = slice_along(patient, bb_ids, bb_axis)
 
     # create directory if there isn't any
