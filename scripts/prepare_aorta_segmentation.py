@@ -10,7 +10,6 @@ from functools import partial
 
 import sys
 import load_utils
-import watereshed
 from tqdm import tqdm
 
 import warnings

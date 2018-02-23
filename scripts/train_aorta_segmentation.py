@@ -10,11 +10,8 @@ from itertools import product
 import numpy as np
 import scipy.ndimage
 import cv2
-from multiprocessing import Pool
 
 import load_utils
-import watereshed
-import generator_3D
 
 import sys
 sys.path.append('nets')
